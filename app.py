@@ -121,9 +121,13 @@ def get_model(filename: str):
 
 
 def configure_app(app):
+    first_custom_route = len(app.router.routes)
     app.add_api_route("/health", health, methods=["GET"])
     app.add_api_route("/studio/models/{filename}", get_model, methods=["GET"])
     app.mount("/studio", StaticFiles(directory=DIST, html=True), name="web")
+    custom_routes = app.router.routes[first_custom_route:]
+    del app.router.routes[first_custom_route:]
+    app.router.routes[0:0] = custom_routes
 
 if __name__ == "__main__":
     demo.launch(

@@ -15,7 +15,7 @@ React, Three.js, and MediaPipe pose and hand tracking for a live webcam avatar. 
 
 ## Hugging Face Space deployment
 
-This repository is configured for the Gradio SDK and can be connected to the Space at `https://huggingface.co/spaces/chandrashekar8/liveavatar`. The build output in `space-dist/` contains the browser application; the Space downloads its WASM files, Lite and hand models, and rigged avatar when it starts. Full and Heavy pose models download only if a visitor selects them. Visitors open the Space URL over HTTPS, grant that browser camera permission, and select **Start camera**. Choose **Lite · fastest** and **People: 1** for the best performance on lower-powered devices.
+This repository is configured for the Gradio SDK and can be connected to the Space at `https://huggingface.co/spaces/chandrashekar8/liveavatar`. The build output in `space-dist/` contains the browser application; the Space downloads its WASM files, pose and hand models, and rigged avatar when it starts. Visitors open the Space URL over HTTPS, grant that browser camera permission, and select **Start camera**. Choose **Lite · fastest** and **People: 1** for the best performance on lower-powered devices.
 
 Inference is on-device. Each visitor's browser performs its own tracking, so users do not share an inference queue or send camera footage to the Space. Selecting ZeroGPU does not accelerate this version; it is only the hosting hardware setting. The optional Python backend below is for a server running on the same local computer, not the hosted Space.
 

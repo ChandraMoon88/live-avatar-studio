@@ -8,9 +8,6 @@ from pathlib import Path
 
 import gradio as gr
 import spaces
-from fastapi import HTTPException
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -29,7 +26,6 @@ POSE_MODELS = {
     "pose_landmarker_heavy.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task",
     "hand_landmarker.task": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
 }
-MODEL_LOCKS = {name: threading.Lock() for name in POSE_MODELS}
 AVATAR_URL = "https://raw.githubusercontent.com/met4citizen/TalkingHead/1563de184c19b310de4b636664d5835e2c74dbba/avatars/mpfb.glb"
 WASM_FILES = (
     "vision_wasm_internal.js",
@@ -62,10 +58,7 @@ def download_asset(url: str, destination: Path) -> None:
 
 
 def prepare_assets() -> None:
-    assets = [
-        (POSE_MODELS["pose_landmarker_lite.task"], DIST / "models" / "pose_landmarker_lite.task"),
-        (POSE_MODELS["hand_landmarker.task"], DIST / "models" / "hand_landmarker.task"),
-    ]
+    assets = [(url, DIST / "models" / name) for name, url in POSE_MODELS.items()]
     assets.append((AVATAR_URL, DIST / "models" / "mpfb.glb"))
     wasm_root = f"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@{VISION_VERSION}/wasm"
     assets.extend((f"{wasm_root}/{name}", DIST / "mediapipe" / "wasm" / name) for name in WASM_FILES)
@@ -88,7 +81,7 @@ html, body, .gradio-container { margin: 0 !important; padding: 0 !important; wid
 """) as demo:
     gr.HTML("""
 <iframe
-  src="/studio/"
+  src="/gradio_api/file=""" + str((DIST / "index.html").resolve()).replace("\\", "/") + """"
   title="Live Avatar Studio"
   allow="camera; autoplay; fullscreen"
   style="position:fixed;inset:0;width:100vw;height:100vh;border:0;z-index:99999;background:#0c0e13">
@@ -104,37 +97,12 @@ class IsolationHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
-async def health():
-    return {"status": "ok"}
-
-
-def get_model(filename: str):
-    if filename not in {*POSE_MODELS, "mpfb.glb"}:
-        raise HTTPException(status_code=404, detail="Model not found")
-    model_path = DIST / "models" / filename
-    if filename in POSE_MODELS:
-        with MODEL_LOCKS[filename]:
-            download_asset(POSE_MODELS[filename], model_path)
-    elif not model_path.is_file():
-        download_asset(AVATAR_URL, model_path)
-    return FileResponse(model_path)
-
-
-def configure_app(app):
-    first_custom_route = len(app.router.routes)
-    app.add_api_route("/health", health, methods=["GET"])
-    app.add_api_route("/studio/models/{filename}", get_model, methods=["GET"])
-    app.mount("/studio", StaticFiles(directory=DIST, html=True), name="web")
-    custom_routes = app.router.routes[first_custom_route:]
-    del app.router.routes[first_custom_route:]
-    app.router.routes[0:0] = custom_routes
-
 if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=int(os.environ.get("GRADIO_SERVER_PORT", "7860")),
         prevent_thread_lock=True,
+        allowed_paths=[str(DIST.resolve())],
         app_kwargs={"middleware": [Middleware(IsolationHeadersMiddleware)]},
     )
-    configure_app(demo.app)
     threading.Event().wait()

@@ -13,7 +13,7 @@ const spaceDist = path.join(root, 'space-dist');
 process.env.VITE_DEFAULT_POSE_TIER = 'device';
 await build({
   root,
-  base: '/studio/',
+  base: './',
   publicDir: false,
   build: { outDir: spaceDist, emptyOutDir: true },
 });

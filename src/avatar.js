@@ -44,7 +44,7 @@ let avatarAssetPromise;
 function loadAvatarAsset() {
   if (!avatarAssetPromise) {
     avatarAssetPromise = new Promise((resolve, reject) => {
-      const baseUrl = new URL(import.meta.env.BASE_URL, window.location.origin);
+      const baseUrl = new URL(import.meta.env.BASE_URL, window.location.href);
       new GLTFLoader().load(new URL('models/mpfb.glb', baseUrl).href, (gltf) => resolve(gltf.scene), undefined, reject);
     }).catch((error) => {
       avatarAssetPromise = null;

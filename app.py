@@ -2,15 +2,18 @@ import mimetypes
 import os
 import shutil
 import threading
+import threading
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import gradio as gr
-import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 
 mimetypes.add_type("application/wasm", ".wasm")
@@ -75,27 +78,31 @@ def prepare_assets() -> None:
 
 prepare_assets()
 
-with gr.Blocks() as demo:
-    gr.Markdown("Live Avatar Studio")
-    gr.Markdown("The live camera experience is available at the Space home page.")
-
-app = FastAPI()
-
-
-@app.middleware("http")
-async def add_isolation_headers(request, call_next):
-    response = await call_next(request)
-    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
-    return response
+with gr.Blocks(css="""
+html, body, .gradio-container { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; min-height: 100% !important; }
+""") as demo:
+    gr.HTML("""
+<iframe
+  src="/studio/"
+  title="Live Avatar Studio"
+  allow="camera; autoplay; fullscreen"
+  style="position:fixed;inset:0;width:100vw;height:100vh;border:0;z-index:99999;background:#0c0e13">
+</iframe>
+""")
 
 
-@app.get("/health")
+class IsolationHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+        return response
+
+
 async def health():
     return {"status": "ok"}
 
 
-@app.get("/models/{filename}")
 def get_model(filename: str):
     if filename not in {*POSE_MODELS, "mpfb.glb"}:
         raise HTTPException(status_code=404, detail="Model not found")
@@ -108,8 +115,17 @@ def get_model(filename: str):
     return FileResponse(model_path)
 
 
-app = gr.mount_gradio_app(app, demo, path="/gradio")
-app.mount("/", StaticFiles(directory=DIST, html=True), name="web")
+def configure_app(app):
+    app.add_api_route("/health", health, methods=["GET"])
+    app.add_api_route("/studio/models/{filename}", get_model, methods=["GET"])
+    app.mount("/studio", StaticFiles(directory=DIST, html=True), name="web")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "7860")))
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=int(os.environ.get("GRADIO_SERVER_PORT", "7860")),
+        prevent_thread_lock=True,
+        app_kwargs={"middleware": [Middleware(IsolationHeadersMiddleware)]},
+    )
+    configure_app(demo.app)
+    threading.Event().wait()

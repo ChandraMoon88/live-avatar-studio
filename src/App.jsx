@@ -41,7 +41,7 @@ function Preview({ videoRef, canvasRef, fps, latency, engine, status, poseDetect
 
 function getCameraError(cause) {
   if (cause?.name === 'NotAllowedError' || cause?.name === 'SecurityError') {
-    return 'Camera access is blocked. Use the site controls beside the address bar to allow camera access for 127.0.0.1, then reload and try again. Also check Windows Settings > Privacy & security > Camera.';
+    return 'Camera access is blocked. Use the site controls beside the address bar to allow camera access for this site, then reload and try again. Also check your device privacy settings.';
   }
   if (cause?.name === 'NotFoundError' || cause?.name === 'DevicesNotFoundError') {
     return 'No camera was found. Connect or enable a webcam, then try again.';
@@ -57,7 +57,7 @@ function getCameraError(cause) {
 
 function App() {
   const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-  const serverLabel = isLocalHost ? 'Local server' : 'Hugging Face Space';
+  const serverLabel = 'Local server';
   const stageRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -71,7 +71,7 @@ function App() {
   const avatarRef = useRef(null);
   const filterRef = useRef({ landmarks: null, last: 0 });
   const serverFrameTime = useRef(0);
-  const [tier, setTier] = useState(import.meta.env.VITE_DEFAULT_POSE_TIER === 'server' ? 'server' : 'device');
+  const [tier, setTier] = useState(import.meta.env.VITE_DEFAULT_POSE_TIER === 'server' && isLocalHost ? 'server' : 'device');
   const [poseModel, setPoseModel] = useState('lite');
   const [maxPeople, setMaxPeople] = useState(1);
   const [status, setStatus] = useState('idle');
@@ -353,7 +353,7 @@ function App() {
       if (activeDeviceId) setCameraDeviceId(activeDeviceId);
 
       if (tier === 'device') {
-        const worker = new Worker('/pose.worker.js');
+        const worker = new Worker(`${import.meta.env.BASE_URL}pose.worker.js`);
         workerRef.current = worker;
         const sendFrame = async () => {
           if (!streamRef.current || !videoRef.current || workerRef.current !== worker) return;
@@ -497,7 +497,7 @@ function App() {
       <div className="header-controls">
         <div className="privacy-toggle" role="group" aria-label="Pose processing mode">
           <button className={tier === 'device' ? 'selected' : ''} onClick={() => { if (status === 'idle') setTier('device'); }}><span className="privacy-dot device" />On-device</button>
-          <button className={tier === 'server' ? 'selected' : ''} onClick={() => { if (status === 'idle') setTier('server'); }}><span className="privacy-dot server" />{serverLabel}</button>
+          {isLocalHost && <button className={tier === 'server' ? 'selected' : ''} onClick={() => { if (status === 'idle') setTier('server'); }}><span className="privacy-dot server" />{serverLabel}</button>}
         </div>
         <label className="model-picker"><span>POSE</span><select value={poseModel} onChange={(event) => setPoseModel(event.target.value)} disabled={status !== 'idle'} aria-label="Pose model"><option value="lite">Lite · fastest</option><option value="full">Full · balanced</option><option value="heavy">Heavy · quality</option></select></label>
         <label className="model-picker people-picker"><span>PEOPLE</span><select value={maxPeople} onChange={(event) => setMaxPeople(Number(event.target.value))} disabled={status !== 'idle'} aria-label="People to track"><option value={1}>1 · fastest</option><option value={2}>2 people</option><option value={3}>3 people</option><option value={4}>4 people</option></select></label>

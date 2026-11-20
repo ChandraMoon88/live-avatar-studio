@@ -7,13 +7,14 @@ let busy = false;
 async function createLandmarker() {
   const model = ['lite', 'full', 'heavy'].includes(self.selectedModel) ? self.selectedModel : 'lite';
   const people = [1, 2, 3, 4].includes(self.maxPeople) ? self.maxPeople : 1;
+  const appBase = new URL('./', self.location.href);
   const files = await FilesetResolver.forVisionTasks(
-    `${self.location.origin}/mediapipe/wasm`,
+    new URL('mediapipe/wasm/', appBase).href,
     false,
   );
   const pose = await PoseLandmarker.createFromOptions(files, {
     baseOptions: {
-      modelAssetPath: `/models/pose_landmarker_${model}.task`,
+      modelAssetPath: new URL(`models/pose_landmarker_${model}.task`, appBase).href,
       delegate: 'CPU',
     },
     runningMode: 'VIDEO',
@@ -23,7 +24,7 @@ async function createLandmarker() {
   });
   const hands = await HandLandmarker.createFromOptions(files, {
     baseOptions: {
-      modelAssetPath: '/models/hand_landmarker.task',
+      modelAssetPath: new URL('models/hand_landmarker.task', appBase).href,
       delegate: 'CPU',
     },
     runningMode: 'VIDEO',

@@ -3,18 +3,21 @@ title: Live Avatar Studio
 emoji: 🎥
 colorFrom: purple
 colorTo: indigo
-sdk: docker
-app_port: 7860
+sdk: gradio
+sdk_version: 5.42.0
+app_file: app.py
 pinned: false
 ---
 
 # Form — Live Avatar Studio
 
-React, Three.js, and MediaPipe pose and hand tracking for a live webcam avatar. The stage loads a rigged, skinned glTF humanoid instead of a placeholder; on-device CPU tracking is the local default, and this repository can also run the FastAPI inference server as a Hugging Face Docker Space.
+React, Three.js, and MediaPipe pose and hand tracking for a live webcam avatar. The Space hosts the web app and its model assets; pose and hand inference run in each visitor's browser. Camera frames are not sent to the Space, and ZeroGPU is not used for inference.
 
-## Hugging Face Space
+## Hugging Face Space deployment
 
-The Docker image serves the web app and CPU inference from one Space, defaults to server inference, and does not intentionally save frames. Webcam images are sent to the Space while tracking is active; keep the Space private unless you intend to let others use it. Hugging Face currently lists CPU Basic as 2 vCPUs and 16 GB RAM with $0 hardware usage, but compute-based Spaces require a PRO plan for personal accounts. CPU Basic Spaces sleep after 48 hours of inactivity. See [Spaces pricing](https://huggingface.co/pricing#spaces) and the [hardware requirements](https://huggingface.co/docs/hub/spaces-overview#hardware-resources).
+This repository is configured for the Gradio SDK and can be connected to the Space at `https://huggingface.co/spaces/chandrashekar8/liveavatar`. The build output in `space-dist/` contains the browser application; the Space downloads its WASM files, Lite and hand models, and rigged avatar when it starts. Full and Heavy pose models download only if a visitor selects them. Visitors open the Space URL over HTTPS, grant that browser camera permission, and select **Start camera**. Choose **Lite · fastest** and **People: 1** for the best performance on lower-powered devices.
+
+Inference is on-device. Each visitor's browser performs its own tracking, so users do not share an inference queue or send camera footage to the Space. Selecting ZeroGPU does not accelerate this version; it is only the hosting hardware setting. The optional Python backend below is for a server running on the same local computer, not the hosted Space.
 
 ## Run the web app
 
@@ -23,7 +26,15 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5188](http://localhost:5188) and allow camera access. The first run downloads MediaPipe Lite, Full, and Heavy pose models, the hand-landmark model, the WASM runtime, and a rigged glTF character into `public/`; a working internet connection is needed once. Choose Lite for the fastest CPU tracking, Full for a quality/speed balance, or Heavy for higher quality at lower frame rates. Select one to four people to track; one person is the faster default. The CPU worker also runs separate hand inference for up to two hands, so finger articulation and multi-person tracking use more CPU than pose-only single-person tracking. After the initial download, models are served locally. The on-device tracker uses the CPU and sends no webcam frames to a server. Vite serves the assets with the COOP/COEP headers required for WebAssembly.
+Open [http://localhost:5188](http://localhost:5188) and allow camera access. The first run downloads MediaPipe Lite, Full, and Heavy pose models, the hand-landmark model, the WASM runtime, and a rigged glTF character into `public/`; a working internet connection is needed once. Choose Lite for the fastest tracking, Full for a quality/speed balance, or Heavy for higher quality at lower frame rates. Select one to four people to track; one person is the faster default. The browser worker also runs separate hand inference for up to two hands, so finger articulation and multi-person tracking use more CPU than pose-only single-person tracking. On-device tracking sends no webcam frames to a server. Vite serves the assets with the COOP/COEP headers required for WebAssembly.
+
+Build the static frontend for the Space with:
+
+```powershell
+npm run build:space
+```
+
+Commit the updated `space-dist/` output along with `app.py`, `requirements.txt`, and this README when updating the Space.
 
 ## Optional local Python pose server
 
@@ -34,8 +45,8 @@ python -m pip install -r backend\requirements.txt
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Choose **Local server** before starting the camera. The Python server downloads the pose and hand models on first launch and accepts JPEG frames at `ws://localhost:8000/ws/pose`. This mode sends live camera frames to the local Python process; it does not connect to a hosted service.
+Choose **Local server** before starting the camera. The Python server downloads the pose and hand models on first launch and accepts JPEG frames at `ws://localhost:8000/ws/pose`. This mode sends live camera frames to the local Python process; it does not connect to the hosted Space. The hosted app hides this option and always uses on-device inference.
 
 Use `npm run build` to create a production build.
 
-The rigged human avatar is the CC0 `mpfb.glb` character from [TalkingHead / MPFB](https://github.com/met4citizen/TalkingHead/blob/1563de184c19b310de4b636664d5835e2c74dbba/README.md#L369-L371). The model is loaded locally after setup; webcam inference only changes its rig and does not recreate a photoreal digital twin of the camera user. Body-part motion is retargeted independently, with hand and finger joints driven by the separate hand tracker. Occlusion, fast motion, camera motion, and body/mesh contact can still cause errors; the 29 research scenarios require the corresponding test clips for evaluation and are not guarantees of accuracy.
+The rigged human avatar is the CC0 `mpfb.glb` character from [TalkingHead / MPFB](https://github.com/met4citizen/TalkingHead/blob/1563de184c19b310de4b636664d5835e2c74dbba/README.md#L369-L371). The model is downloaded and served by the Space but rendered in the visitor's browser; it does not recreate a photoreal digital twin of the camera user. Body-part motion is retargeted independently, with hand and finger joints driven by the separate hand tracker. Occlusion, fast motion, camera motion, and body/mesh contact can still cause errors; the 29 research scenarios require the corresponding test clips for evaluation and are not guarantees of accuracy.

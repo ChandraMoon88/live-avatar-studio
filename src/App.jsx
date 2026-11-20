@@ -16,11 +16,11 @@ const HAND_CONNECTIONS = [
   [15, 16], [13, 17], [17, 18], [18, 19], [19, 20], [0, 17],
 ];
 
-function Stage({ stageRef }) {
+function Stage({ stageRef, renderFps }) {
   return <div className="stage" ref={stageRef}>
     <div className="stage-vignette" />
     <div className="stage-caption"><span className="status-dot" /> LIVE STAGE <span className="caption-divider">/</span> 01</div>
-    <div className="stage-bottom"><span>FRONT VIEW</span><span className="stage-bottom-center">FORM <i>STUDIO</i></span><span>3D VIEWPORT <b>·</b> 60 FPS</span></div>
+    <div className="stage-bottom"><span>FRONT VIEW</span><span className="stage-bottom-center">FORM <i>STUDIO</i></span><span>3D VIEWPORT <b>·</b> {renderFps || '--'} FPS</span></div>
   </div>;
 }
 
@@ -77,6 +77,7 @@ function App() {
   const [status, setStatus] = useState('idle');
   const [engine, setEngine] = useState('CPU');
   const [fps, setFps] = useState(0);
+  const [renderFps, setRenderFps] = useState(0);
   const [latency, setLatency] = useState(0);
   const [poseDetected, setPoseDetected] = useState(false);
   const [error, setError] = useState('');
@@ -152,9 +153,18 @@ function App() {
       observer.observe(container);
       resize();
       let frame;
+      let fpsStarted = performance.now();
+      let renderedFrames = 0;
       const animate = () => {
         frame = requestAnimationFrame(animate);
         renderer.render(scene, camera);
+        renderedFrames += 1;
+        const now = performance.now();
+        if (now - fpsStarted >= 500) {
+          setRenderFps(Math.round(renderedFrames * 1000 / (now - fpsStarted)));
+          fpsStarted = now;
+          renderedFrames = 0;
+        }
       };
       animate();
       return () => {
@@ -508,7 +518,7 @@ function App() {
       </aside>
 
       <section className="main-stage">
-        <Stage stageRef={stageRef} />
+        <Stage stageRef={stageRef} renderFps={renderFps} />
         <div className="stage-toolbar"><button aria-label="Reset view" title="Reset view"><RotateCcw size={14} /></button><span /><button aria-label="Stage settings" title="Stage settings"><Settings2 size={15} /></button></div>
         <div className="stage-status"><span className={status === 'active' ? poseDetected ? 'connected' : 'searching-dot' : ''} />{status === 'active' ? poseDetected ? 'PERSON DETECTED · TRACKING LIVE' : 'CAMERA LIVE · CENTER YOUR FULL BODY' : status === 'loading' ? 'REQUESTING CAMERA PERMISSION' : 'AWAITING CAMERA'}</div>
         <Preview videoRef={videoRef} canvasRef={canvasRef} fps={fps} latency={latency} engine={engine} status={status} poseDetected={poseDetected} cameraDevices={cameraDevices} cameraDeviceId={cameraDeviceId} onCameraChange={changeCamera} />

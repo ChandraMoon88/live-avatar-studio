@@ -1,0 +1,14 @@
+.git
+.venv
+node_modules
+dist
+public/models
+public/mediapipe
+public/pose.worker.js
+backend/*.task
+**/__pycache__
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi

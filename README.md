@@ -19,6 +19,8 @@ This repository is configured for the Gradio SDK and can be connected to the Spa
 
 Inference is on-device. Each visitor's browser performs its own tracking, so users do not share an inference queue or send camera footage to the Space. Selecting ZeroGPU does not accelerate this version; it is only the hosting hardware setting. The optional Python backend below is for a server running on the same local computer, not the hosted Space.
 
+To update the existing Space, upload `app.py`, `requirements.txt`, this `README.md`, and the contents of `space-dist/` to its **Files and versions** tab, preserving the `space-dist/assets/` subfolder structure, then commit the upload. The Space does not automatically sync from this GitHub repository.
+
 ## Run the web app
 
 ```powershell

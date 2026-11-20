@@ -2,12 +2,12 @@ import mimetypes
 import os
 import shutil
 import threading
-import threading
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import gradio as gr
+import spaces
 from fastapi import HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -77,6 +77,11 @@ def prepare_assets() -> None:
 
 
 prepare_assets()
+
+@spaces.GPU
+def zero_gpu_ready():
+    return True
+
 
 with gr.Blocks(css="""
 html, body, .gradio-container { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; min-height: 100% !important; }

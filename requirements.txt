@@ -1,2 +1,3 @@
 gradio==5.42.0
+spaces==0.52.1
 uvicorn[standard]>=0.30,<1
